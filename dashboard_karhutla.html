@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Eksekutif Kebakaran Hutan dan Lahan (Karhutla)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ===== Tema & variabel warna ===== */
+:root{
+  --bg:#f8f9fa; --card:#ffffff; --ink:#1c252e; --muted:#637381; --line:#e5e8eb;
+  --navy:#8e24aa; --teal:#d84315; --teal-soft:#fbe9e7; --amber:#f57c00; --red:#c62828; --green:#2e7d32;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.05);
+}
+:root[data-theme="dark"]{
+  --bg:#12181f; --card:#1e2732; --ink:#f4f6f8; --muted:#919eab; --line:#2c3846;
+  --navy:#ba68c8; --teal:#ff7043; --teal-soft:#3e2723; --amber:#ffb74d; --red:#ef5350; --green:#66bb6a;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:1500px;margin:0 auto;padding:0 20px 40px}
+
+/* ===== Header ===== */
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;padding:22px 0 14px}
+h1{margin:0;font-size:26px;letter-spacing:-.3px;color:var(--teal)}
+.sub{color:var(--muted);font-size:14px;margin-top:2px}
+.hdr-actions{display:flex;gap:8px;align-items:center}
+.badge{display:inline-block;background:var(--teal-soft);color:var(--teal);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+.badge.warn{background:#fff3e0;color:#e65100}
+:root[data-theme="dark"] .badge.warn{background:#3e2723;color:var(--amber)}
+button,.btn{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 12px;font-size:14px}
+button:hover{border-color:var(--teal)}
+.sim-note{background:#fff3e0;color:#bf360c;border:1px solid #ffe0b2;border-radius:10px;padding:8px 14px;font-size:13.5px;margin-bottom:12px}
+:root[data-theme="dark"] .sim-note{background:#3e2723;color:var(--amber);border-color:#4e342e}
+
+/* ===== Filter bar ===== */
+.filters{position:sticky;top:0;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-start}
+.f-group{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f-group>label{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer;user-select:none}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.f-group input[type=month],.f-group input[type=text]{font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.range{display:flex;gap:6px;align-items:center}
+
+/* ===== KPI ===== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.kpi .val{font-size:30px;font-weight:800;color:var(--teal);letter-spacing:-.5px;line-height:1.15;margin-top:4px}
+.kpi .dlt{font-size:13px;margin-top:4px;font-weight:600}
+.kpi .dlt small{color:var(--muted);font-weight:500}
+.up{color:var(--red)} .down{color:var(--green)} .flat{color:var(--muted)}
+.legend-note{font-size:12.5px;color:var(--muted);margin:-6px 0 14px}
+
+/* ===== Kartu grafik ===== */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;min-width:0}
+.card h2{margin:0 0 2px;font-size:16px;color:var(--teal)}
+.card .note{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+.chart-box{position:relative;height:300px}
+.chart-box.tall{height:360px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
+@media (max-width:1000px){.c8,.c6,.c4{grid-column:span 12}}
+
+/* ===== Insight ===== */
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}
+.ins{border:1px solid var(--line);border-left:5px solid var(--teal);border-radius:10px;padding:12px 14px;background:var(--card)}
+.ins.risk{border-left-color:var(--red)} .ins.watch{border-left-color:var(--amber)} .ins.ok{border-left-color:var(--green)}
+.ins b{display:block;color:var(--teal);margin-bottom:3px}
+.ins p{margin:0;font-size:14px}
+.ins .q{margin-top:6px;font-weight:600;font-size:13.5px;color:var(--ink)}
+
+/* ===== Tabel ===== */
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 16px;margin-top:14px}
+summary{cursor:pointer;font-weight:700;color:var(--teal);font-size:16px}
+.tbl-wrap{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td.num,th.num{text-align:right}
+footer{color:var(--muted);font-size:12.5px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Dashboard Eksekutif Kebakaran Hutan &amp; Lahan (Karhutla)</h1>
+    <div class="sub">
+      Data: <span id="rangeTxt"></span> · 32 kejadian sampel tercatat ·
+      <span class="badge warn">2026 parsial (s.d. April)</span>
+    </div>
+  </div>
+  <div class="hdr-actions">
+    <button id="btnTheme" title="Mode terang/gelap">🌙 Mode</button>
+    <button id="btnPrint" title="Cetak / simpan PDF">🖨 Cetak</button>
+  </div>
+</header>
+
+<div class="sim-note"><b>Data Kebakaran Hutan &amp; Lahan (Karhutla).</b> Dataset ini difokuskan pada analisis dampak luas lahan terbakar, penderita ISPA, titik api (hotspot), dan estimasi kerugian ekonomi regional (2024–2026).</div>
+
+<!-- ===== Filter ===== -->
+<section class="filters" aria-label="Filter">
+  <div class="f-group"><label>Rentang Waktu</label>
+    <div class="range"><input type="month" id="fFrom"><input type="month" id="fTo"></div></div>
+  <div class="f-group"><label>Wilayah</label><div class="chips" id="fWil"></div></div>
+  <div class="f-group"><label>Penyebab Utama</label><div class="chips" id="fCause"></div></div>
+  <div class="f-group"><label>Tingkat Keparahan</label><div class="chips" id="fParah"></div></div>
+  <div class="f-group"><label>Status Penanganan</label><div class="chips" id="fStatus"></div></div>
+  <div class="f-group"><label>Bantuan Posko</label><div class="chips" id="fBantu"></div></div>
+  <div class="f-group"><label>Kota / Kabupaten</label>
+    <input type="text" id="fKota" list="kotaList" placeholder="Ketik nama kota…"><datalist id="kotaList"></datalist></div>
+  <div class="f-group"><label>&nbsp;</label><button id="btnReset">↺ Reset Filter</button></div>
+</section>
+
+<!-- ===== KPI ===== -->
+<section class="kpis" id="kpis"></section>
+<div class="legend-note" id="kpiNote"></div>
+
+<!-- ===== Grafik ===== -->
+<section class="grid">
+  <div class="card c12"><h2>Tren Kejadian Karhutla &amp; Kerugian per Bulan</h2>
+    <p class="note">Batang = jumlah kejadian karhutla; garis = total kerugian (Rp miliar). Puncak karhutla biasa terjadi di kemarau (Juli–Oktober).</p>
+    <div class="chart-box tall"><canvas id="chTrend"></canvas></div></div>
+
+  <div class="card c6"><h2>Kejadian &amp; Rata-rata Luas Terbakar per Penyebab</h2>
+    <p class="note">Batang = jumlah kejadian; garis = rata-rata luas terbakar per kejadian (Hektar).</p>
+    <div class="chart-box"><canvas id="chCause"></canvas></div></div>
+
+  <div class="card c6"><h2>Kinerja Dampak Wilayah</h2>
+    <p class="note">Total kerugian (Rp miliar) dan penderita ISPA (ribu jiwa) per wilayah.</p>
+    <div class="chart-box"><canvas id="chWil"></canvas></div></div>
+
+  <div class="card c6"><h2>Perbandingan Tingkat Keparahan</h2>
+    <p class="note">Batang = jumlah kejadian; garis = rata-rata kasus ISPA per kejadian.</p>
+    <div class="chart-box"><canvas id="chParah"></canvas></div></div>
+
+  <div class="card c6"><h2>10 Kota/Kabupaten dengan Kerugian Terbesar</h2>
+    <p class="note">Total kerugian (Rp miliar) dan penderita ISPA (ribu jiwa).</p>
+    <div class="chart-box"><canvas id="chTop"></canvas></div></div>
+
+  <div class="card c8"><h2>Titik Api (Hotspot) vs Luas Terbakar (Ha)</h2>
+    <p class="note" id="scatNote"></p>
+    <div class="chart-box tall"><canvas id="chScatter"></canvas></div></div>
+
+  <div class="card c4"><h2>Kesiapan Penanganan</h2>
+    <p class="note">Status pemadaman &amp; penanganan.</p>
+    <div class="chart-box" style="height:150px"><canvas id="chStatus"></canvas></div>
+    <p class="note" style="margin-top:10px">Bantuan logistik/posko kesehatan.</p>
+    <div class="chart-box" style="height:150px"><canvas id="chBantu"></canvas></div></div>
+</section>
+
+<!-- ===== Insight ===== -->
+<section class="card" style="margin-top:4px">
+  <h2>Wawasan Utama untuk Pimpinan &amp; Satgas Karhutla</h2>
+  <p class="note">Dihitung otomatis berbasis data yang difilter.</p>
+  <div class="insights" id="insights"></div>
+</section>
+
+<!-- ===== Tabel ===== -->
+details>
+  <summary>Detail kejadian Karhutla dengan kerugian terbesar</summary>
+  <div class="tbl-wrap"><table id="tbl"></table></div>
+</details>
+
+<footer>Dashboard Karhutla - HTML + Chart.js + Dataset JSON Tertanam.</footer>
+</div>
+
+<script>
+/* Embedded Dataset Karhutla */
+const DATA = [
+  {"id":"KHT-0001","tgl":"2024-01-02","thn":2024,"bln":1,"wil":"Sumatera","prov":"Riau","kota":"Pekanbaru","penyebab":"Pembukaan Lahan (Gambut)","parah":"Ringan","luas_ha":28.4,"titik_api":8,"durasi":2,"mati":0,"ispa":320,"rugi_juta":750.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0002","tgl":"2024-01-10","thn":2024,"bln":1,"wil":"Kalimantan","prov":"Kalimantan Tengah","kota":"Palangka Raya","penyebab":"Kelalaian Manusia","parah":"Sedang","luas_ha":145.0,"titik_api":32,"durasi":6,"mati":0,"ispa":1850,"rugi_juta":3400.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0003","tgl":"2024-02-14","thn":2024,"bln":2,"wil":"Sumatera","prov":"Sumatera Selatan","kota":"Ogan Komering Ilir","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Berat","luas_ha":850.5,"titik_api":140,"durasi":18,"mati":2,"ispa":8900,"rugi_juta":14200.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0004","tgl":"2024-03-05","thn":2024,"bln":3,"wil":"Kalimantan","prov":"Kalimantan Barat","kota":"Pontianak","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":210.0,"titik_api":45,"durasi":7,"mati":0,"ispa":2400,"rugi_juta":4800.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0005","tgl":"2024-04-12","thn":2024,"bln":4,"wil":"Jawa & Bali","prov":"Jawa Timur","kota":"Pasuruan","penyebab":"Gesekan Semak Kering","parah":"Ringan","luas_ha":18.2,"titik_api":4,"durasi":1,"mati":0,"ispa":180,"rugi_juta":420.0,"status":"Padam Total","bantuan":"Tidak"},
+  {"id":"KHT-0006","tgl":"2024-05-18","thn":2024,"bln":5,"wil":"Sumatera","prov":"Jambi","kota":"Muaro Jambi","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":180.3,"titik_api":38,"durasi":8,"mati":0,"ispa":2900,"rugi_juta":5100.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0007","tgl":"2024-06-22","thn":2024,"bln":6,"wil":"Kalimantan","prov":"Kalimantan Selatan","kota":"Banjarbaru","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Berat","luas_ha":1120.0,"titik_api":195,"durasi":22,"mati":3,"ispa":12400,"rugi_juta":18900.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0008","tgl":"2024-07-04","thn":2024,"bln":7,"wil":"Nusa Tenggara","prov":"Nusa Tenggara Timur","kota":"Kupang","penyebab":"Gesekan Semak Kering","parah":"Ringan","luas_ha":42.0,"titik_api":11,"durasi":3,"mati":0,"ispa":450,"rugi_juta":980.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0009","tgl":"2024-07-15","thn":2024,"bln":7,"wil":"Sumatera","prov":"Riau","kota":"Dumai","penyebab":"Penebangan Liar","parah":"Sedang","luas_ha":260.0,"titik_api":52,"durasi":9,"mati":0,"ispa":3100,"rugi_juta":5800.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0010","tgl":"2024-08-01","thn":2024,"bln":8,"wil":"Kalimantan","prov":"Kalimantan Tengah","kota":"Palangka Raya","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Berat","luas_ha":1400.0,"titik_api":230,"durasi":24,"mati":4,"ispa":14800,"rugi_juta":22500.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0011","tgl":"2024-08-19","thn":2024,"bln":8,"wil":"Sulawesi","prov":"Sulawesi Selatan","kota":"Gowa","penyebab":"Kelalaian Manusia","parah":"Ringan","luas_ha":35.0,"titik_api":9,"durasi":2,"mati":0,"ispa":620,"rugi_juta":1100.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0012","tgl":"2024-09-08","thn":2024,"bln":9,"wil":"Sumatera","prov":"Riau","kota":"Pekanbaru","penyebab":"Pembukaan Lahan (Gambut)","parah":"Berat","luas_ha":980.0,"titik_api":165,"durasi":19,"mati":1,"ispa":10500,"rugi_juta":16800.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0013","tgl":"2024-09-25","thn":2024,"bln":9,"wil":"Kalimantan","prov":"Kalimantan Timur","kota":"Kutai Kartanegara","penyebab":"Penebangan Liar","parah":"Sedang","luas_ha":195.0,"titik_api":41,"durasi":6,"mati":0,"ispa":2100,"rugi_juta":4200.0,"status":"Padam Total","bantuan":"Tidak"},
+  {"id":"KHT-0014","tgl":"2024-10-10","thn":2024,"bln":10,"wil":"Jawa & Bali","prov":"Jawa Tengah","kota":"Brebes","penyebab":"Gesekan Semak Kering","parah":"Ringan","luas_ha":15.0,"titik_api":3,"durasi":1,"mati":0,"ispa":210,"rugi_juta":350.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0015","tgl":"2024-11-05","thn":2024,"bln":11,"wil":"Nusa Tenggara","prov":"Nusa Tenggara Barat","kota":"Sumba Timur","penyebab":"Kelalaian Manusia","parah":"Ringan","luas_ha":48.0,"titik_api":12,"durasi":3,"mati":0,"ispa":510,"rugi_juta":890.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0016","tgl":"2024-12-12","thn":2024,"bln":12,"wil":"Sulawesi","prov":"Sulawesi Tengah","kota":"Sigi","penyebab":"Gesekan Semak Kering","parah":"Ringan","luas_ha":22.0,"titik_api":5,"durasi":2,"mati":0,"ispa":340,"rugi_juta":620.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0017","tgl":"2025-01-15","thn":2025,"bln":1,"wil":"Sumatera","prov":"Riau","kota":"Dumai","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":175.0,"titik_api":35,"durasi":5,"mati":0,"ispa":2600,"rugi_juta":4100.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0018","tgl":"2025-02-20","thn":2025,"bln":2,"wil":"Kalimantan","prov":"Kalimantan Barat","kota":"Pontianak","penyebab":"Kelalaian Manusia","parah":"Ringan","luas_ha":38.0,"titik_api":9,"durasi":2,"mati":0,"ispa":580,"rugi_juta":920.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0019","tgl":"2025-03-11","thn":2025,"bln":3,"wil":"Sumatera","prov":"Sumatera Selatan","kota":"Ogan Komering Ilir","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Sedang","luas_ha":290.0,"titik_api":58,"durasi":8,"mati":0,"ispa":3800,"rugi_juta":5900.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0020","tgl":"2025-04-08","thn":2025,"bln":4,"wil":"Kalimantan","prov":"Kalimantan Selatan","kota":"Banjarbaru","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":160.0,"titik_api":31,"durasi":6,"mati":0,"ispa":2200,"rugi_juta":3800.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0021","tgl":"2025-05-14","thn":2025,"bln":5,"wil":"Sumatera","prov":"Jambi","kota":"Muaro Jambi","penyebab":"Penebangan Liar","parah":"Ringan","luas_ha":45.0,"titik_api":10,"durasi":3,"mati":0,"ispa":690,"rugi_juta":1050.0,"status":"Padam Total","bantuan":"Tidak"},
+  {"id":"KHT-0022","tgl":"2025-06-20","thn":2025,"bln":6,"wil":"Kalimantan","prov":"Kalimantan Tengah","kota":"Palangka Raya","penyebab":"Pembukaan Lahan (Gambut)","parah":"Berat","luas_ha":1250.0,"titik_api":210,"durasi":21,"mati":2,"ispa":13200,"rugi_juta":20100.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0023","tgl":"2025-07-18","thn":2025,"bln":7,"wil":"Sumatera","prov":"Riau","kota":"Pekanbaru","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Berat","luas_ha":1380.0,"titik_api":240,"durasi":25,"mati":3,"ispa":15100,"rugi_juta":23400.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0024","tgl":"2025-08-10","thn":2025,"bln":8,"wil":"Kalimantan","prov":"Kalimantan Barat","kota":"Pontianak","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Berat","luas_ha":1100.0,"titik_api":185,"durasi":20,"mati":1,"ispa":11900,"rugi_juta":17600.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0025","tgl":"2025-09-02","thn":2025,"bln":9,"wil":"Sumatera","prov":"Sumatera Selatan","kota":"Ogan Komering Ilir","penyebab":"Pembukaan Lahan (Gambut)","parah":"Berat","luas_ha":920.0,"titik_api":150,"durasi":16,"mati":2,"ispa":9800,"rugi_juta":15200.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0026","tgl":"2025-10-14","thn":2025,"bln":10,"wil":"Kalimantan","prov":"Kalimantan Timur","kota":"Kutai Kartanegara","penyebab":"Kelalaian Manusia","parah":"Sedang","luas_ha":220.0,"titik_api":48,"durasi":7,"mati":0,"ispa":2800,"rugi_juta":4900.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0027","tgl":"2025-11-20","thn":2025,"bln":11,"wil":"Nusa Tenggara","prov":"Nusa Tenggara Timur","kota":"Kupang","penyebab":"Gesekan Semak Kering","parah":"Ringan","luas_ha":29.0,"titik_api":7,"durasi":2,"mati":0,"ispa":380,"rugi_juta":710.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0028","tgl":"2025-12-05","thn":2025,"bln":12,"wil":"Jawa & Bali","prov":"DKI Jakarta","kota":"Jakarta Selatan","penyebab":"Kelalaian Manusia","parah":"Ringan","luas_ha":12.0,"titik_api":2,"durasi":1,"mati":0,"ispa":150,"rugi_juta":310.0,"status":"Padam Total","bantuan":"Ya"},
+  {"id":"KHT-0029","tgl":"2026-01-10","thn":2026,"bln":1,"wil":"Sumatera","prov":"Riau","kota":"Pekanbaru","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":190.0,"titik_api":39,"durasi":6,"mati":0,"ispa":2400,"rugi_juta":4300.0,"status":"Penanganan Aktif","bantuan":"Ya"},
+  {"id":"KHT-0030","tgl":"2026-02-18","thn":2026,"bln":2,"wil":"Kalimantan","prov":"Kalimantan Tengah","kota":"Palangka Raya","penyebab":"Cuaca Ekstrem (El Nino)","parah":"Sedang","luas_ha":280.0,"titik_api":55,"durasi":9,"mati":0,"ispa":3600,"rugi_juta":5700.0,"status":"Penanganan Aktif","bantuan":"Ya"},
+  {"id":"KHT-0031","tgl":"2026-03-05","thn":2026,"bln":3,"wil":"Sumatera","prov":"Sumatera Selatan","kota":"Ogan Komering Ilir","penyebab":"Pembukaan Lahan (Gambut)","parah":"Berat","luas_ha":1050.0,"titik_api":175,"durasi":17,"mati":1,"ispa":11200,"rugi_juta":16900.0,"status":"Penanganan Aktif","bantuan":"Ya"},
+  {"id":"KHT-0032","tgl":"2026-04-02","thn":2026,"bln":4,"wil":"Kalimantan","prov":"Kalimantan Selatan","kota":"Banjarbaru","penyebab":"Pembukaan Lahan (Gambut)","parah":"Sedang","luas_ha":230.0,"titik_api":46,"durasi":7,"mati":0,"ispa":2900,"rugi_juta":4600.0,"status":"Siaga Darurat","bantuan":"Ya"}
+];
+
+/* Utilitas & State Filter */
+const $ = s => document.querySelector(s);
+const MON = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const sum = (a,f) => a.reduce((s,x)=>s+f(x),0);
+const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+const nf = (n,d=0) => n.toLocaleString('id-ID',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = (n,d=1) => nf(n,d)+'%';
+const rp = j => {
+  const a = Math.abs(j);
+  if (a >= 1e6) return 'Rp '+nf(j/1e6,2)+' T';
+  if (a >= 1e3) return 'Rp '+nf(j/1e3,1)+' M';
+  return 'Rp '+nf(j,0)+' jt';
+};
+const ym = r => r.thn*100 + r.bln;
+const ymStr = v => `${Math.floor(v/100)}-${String(v%100).padStart(2,'0')}`;
+const ymLbl = v => `${MON[v%100-1]} ${String(Math.floor(v/100)).slice(2)}`;
+const uniq = f => [...new Set(DATA.map(f))];
+const corr = (a,b) => {
+  const n=a.length; if(n<3) return NaN;
+  const ma=mean(a), mb=mean(b); let sab=0,saa=0,sbb=0;
+  for(let i=0;i<n;i++){const x=a[i]-ma,y=b[i]-mb;sab+=x*y;saa+=x*x;sbb+=y*y;}
+  return saa&&sbb ? sab/Math.sqrt(saa*sbb) : NaN;
+};
+function groupBy(rows, key){
+  const m = new Map();
+  rows.forEach(r => { const k=key(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r); });
+  return m;
+}
+
+const DMIN = Math.min(...DATA.map(ym)), DMAX = Math.max(...DATA.map(ym));
+const DMAX_Y = Math.floor(DMAX/100), DMAX_M = DMAX%100;
+const SEV = ['Ringan','Sedang','Berat'];
+const SEV_COL = {Ringan:'#ffa726', Sedang:'#f57c00', Berat:'#c62828'};
+
+const OPT = {
+  wil: uniq(r=>r.wil).sort(), cause: uniq(r=>r.penyebab), parah: SEV,
+  status: ['Padam Total','Penanganan Aktif','Siaga Darurat'], bantu: ['Ya','Tidak']
+};
+const state = {};
+function resetState(){
+  state.from = ymStr(DMIN); state.to = ymStr(DMAX);
+  state.wil = new Set(); state.cause = new Set(); state.parah = new Set();
+  state.status = new Set(); state.bantu = new Set(); state.kota = '';
+}
+resetState();
+
+function filtered(){
+  const f = +state.from.replace('-',''), t = +state.to.replace('-','');
+  return DATA.filter(r => {
+    const v = ym(r);
+    return v>=f && v<=t
+      && (!state.wil.size    || state.wil.has(r.wil))
+      && (!state.cause.size  || state.cause.has(r.penyebab))
+      && (!state.parah.size  || state.parah.has(r.parah))
+      && (!state.status.size || state.status.has(r.status))
+      && (!state.bantu.size  || state.bantu.has(r.bantuan))
+      && (!state.kota        || r.kota===state.kota);
+  });
+}
+
+function buildChips(id, key, values){
+  const box = $(id); box.innerHTML = '';
+  values.forEach(v => {
+    const c = document.createElement('span');
+    c.className = 'chip' + (state[key].has(v)?' on':''); c.textContent = v;
+    c.onclick = () => { state[key].has(v) ? state[key].delete(v) : state[key].add(v); c.classList.toggle('on'); render(); };
+    box.appendChild(c);
+  });
+}
+function buildFilters(){
+  buildChips('#fWil','wil',OPT.wil); buildChips('#fCause','cause',OPT.cause);
+  buildChips('#fParah','parah',OPT.parah); buildChips('#fStatus','status',OPT.status);
+  buildChips('#fBantu','bantu',OPT.bantu);
+  const fF=$('#fFrom'), fT=$('#fTo');
+  fF.min=fT.min=ymStr(DMIN); fF.max=fT.max=ymStr(DMAX); fF.value=state.from; fT.value=state.to;
+  $('#kotaList').innerHTML = uniq(r=>r.kota).sort().map(k=>`<option value="${k}">`).join('');
+  $('#fKota').value = '';
+}
+$('#fFrom').onchange = e => { if(e.target.value){state.from=e.target.value; render();} };
+$('#fTo').onchange   = e => { if(e.target.value){state.to=e.target.value; render();} };
+$('#fKota').oninput  = e => {
+  const v = e.target.value.trim();
+  const hit = uniq(r=>r.kota).find(k=>k.toLowerCase()===v.toLowerCase());
+  state.kota = hit || ''; render();
+};
+$('#btnReset').onclick = () => { resetState(); buildFilters(); render(); };
+$('#btnPrint').onclick = () => window.print();
+$('#btnTheme').onclick = () => {
+  const d = document.documentElement;
+  d.dataset.theme = d.dataset.theme==='dark' ? 'light' : 'dark'; render();
+};
+
+/* KPI */
+function yoy(rows, fn){
+  if(!rows.length) return null;
+  const ly = Math.max(...rows.map(r=>r.thn)), py = ly-1;
+  const cur = rows.filter(r=>r.thn===ly);
+  const m1 = Math.min(...cur.map(r=>r.bln)), m2 = Math.max(...cur.map(r=>r.bln));
+  const prev = rows.filter(r=>r.thn===py && r.bln>=m1 && r.bln<=m2);
+  if(!prev.length) return null;
+  return { ly, py, m1, m2, cur:fn(cur), prev:fn(prev), partial: ly===DMAX_Y && DMAX_M<12 };
+}
+const KPI = [
+  {l:'Total Kejadian',      f:a=>a.length,                         fmt:v=>nf(v),           mode:'pct'},
+  {l:'Luas Terbakar',       f:a=>sum(a,r=>r.luas_ha),              fmt:v=>nf(v,0)+' Ha',   mode:'pct'},
+  {l:'Total Kerugian',      f:a=>sum(a,r=>r.rugi_juta),            fmt:v=>rp(v),           mode:'pct'},
+  {l:'Penderita ISPA',      f:a=>sum(a,r=>r.ispa),                 fmt:v=>nf(v)+' jiwa',   mode:'pct'},
+  {l:'Total Titik Api',     f:a=>sum(a,r=>r.titik_api),            fmt:v=>nf(v)+' spot',   mode:'pct'},
+  {l:'Rata-rata Durasi',    f:a=>mean(a.map(r=>r.durasi)),         fmt:v=>nf(v,1)+' hari', mode:'pct'},
+  {l:'Kejadian Berat',      f:a=>a.length? a.filter(r=>r.parah==='Berat').length/a.length*100 : 0, fmt:v=>pct(v), mode:'pp'},
+];
+function renderKPI(rows){
+  $('#kpis').innerHTML = KPI.map(k => {
+    const val = rows.length ? k.fmt(k.f(rows)) : '—';
+    const y = yoy(rows, k.f);
+    let d = '<span class="flat">— <small>tak ada pembanding</small></span>';
+    if(y){
+      const diff = k.mode==='pct' ? (y.prev ? (y.cur-y.prev)/y.prev*100 : 0) : (y.cur-y.prev);
+      const cls = Math.abs(diff)<0.05 ? 'flat' : (diff>0 ? 'up' : 'down');
+      const arrow = cls==='flat' ? '■' : (diff>0 ? '▲' : '▼');
+      const txt = k.mode==='pct' ? pct(Math.abs(diff)) : nf(Math.abs(diff),1)+' poin';
+      const per = y.partial ? ` (${MON[y.m1-1]}–${MON[y.m2-1]})` : '';
+      d = `<span class="${cls}">${arrow} ${txt} <small>vs ${y.py}${per}</small></span>`;
+    }
+    return `<div class="kpi"><div class="lbl">${k.l}</div><div class="val">${val}</div><div class="dlt">${d}</div></div>`;
+  }).join('');
+  const y = yoy(rows, a=>a.length);
+  $('#kpiNote').textContent = 'Panah ▲ merah = naik (risiko karhutla memburuk), ▼ hijau = turun (membaik). ' +
+    (y && y.partial ? `Pembanding ${y.ly} memakai bulan yang sama (${MON[y.m1-1]}–${MON[y.m2-1]}) karena ${y.ly} baru parsial.` : '');
+}
+
+/* Grafik */
+const charts = {};
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function applyTheme(){
+  Chart.defaults.color = css('--muted');
+  Chart.defaults.borderColor = css('--line');
+  Chart.defaults.font.family = 'Inter, "Segoe UI", system-ui, sans-serif';
+  Chart.defaults.font.size = 13;
+}
+function upsert(id, cfg){
+  if(charts[id]){ charts[id].data = cfg.data; charts[id].update(); }
+  else { cfg.options = Object.assign({responsive:true,maintainAspectRatio:false}, cfg.options||{}); charts[id] = new Chart($('#'+id), cfg); }
+}
+const axisT = t => ({display:true,text:t});
+
+function renderTrend(rows){
+  let labels=[], cnt=[], loss=[];
+  if(rows.length){
+    const a = Math.min(...rows.map(ym)), b = Math.max(...rows.map(ym));
+    const by = groupBy(rows, ym);
+    for(let y=Math.floor(a/100), m=a%100; y*100+m<=b; ){
+      const v=y*100+m, g=by.get(v)||[];
+      labels.push(ymLbl(v)); cnt.push(g.length); loss.push(+(sum(g,r=>r.rugi_juta)/1000).toFixed(2));
+      if(++m>12){m=1;y++;}
+    }
+  }
+  upsert('chTrend',{type:'bar',data:{labels,datasets:[
+    {type:'bar',label:'Jumlah kejadian Karhutla',data:cnt,backgroundColor:css('--teal'),yAxisID:'y',order:2},
+    {type:'line',label:'Kerugian (Rp miliar)',data:loss,borderColor:css('--amber'),backgroundColor:css('--amber'),tension:.25,yAxisID:'y1',pointRadius:3,order:1}
+  ]},options:{scales:{
+    y:{beginAtZero:true,title:axisT('Kejadian')},
+    y1:{beginAtZero:true,position:'right',title:axisT('Rp miliar'),grid:{drawOnChartArea:false}}}}});
+}
+function renderCause(rows){
+  const g=[...groupBy(rows,r=>r.penyebab)].sort((a,b)=>b[1].length-a[1].length);
+  upsert('chCause',{type:'bar',data:{labels:g.map(x=>x[0]),datasets:[
+    {type:'bar',label:'Jumlah kejadian',data:g.map(x=>x[1].length),backgroundColor:css('--navy'),yAxisID:'y',order:2},
+    {type:'line',label:'Rata-rata Luas Terbakar (Ha)',data:g.map(x=>+mean(x[1].map(r=>r.luas_ha)).toFixed(1)),borderColor:css('--teal'),backgroundColor:css('--teal'),yAxisID:'y1',pointRadius:4,order:1}
+  ]},options:{scales:{
+    y:{beginAtZero:true,title:axisT('Kejadian')},
+    y1:{beginAtZero:true,position:'right',title:axisT('Rata-rata Ha'),grid:{drawOnChartArea:false}}}}});
+}
+function renderWil(rows){
+  const g=[...groupBy(rows,r=>r.wil)].sort((a,b)=>sum(b[1],r=>r.rugi_juta)-sum(a[1],r=>r.rugi_juta));
+  upsert('chWil',{type:'bar',data:{labels:g.map(x=>x[0]),datasets:[
+    {label:'Kerugian (Rp miliar)',data:g.map(x=>+(sum(x[1],r=>r.rugi_juta)/1000).toFixed(1)),backgroundColor:css('--teal'),yAxisID:'y'},
+    {label:'Penderita ISPA (ribu jiwa)',data:g.map(x=>+(sum(x[1],r=>r.ispa)/1000).toFixed(1)),backgroundColor:css('--amber'),yAxisID:'y1'}
+  ]},options:{scales:{
+    y:{beginAtZero:true,title:axisT('Rp miliar')},
+    y1:{beginAtZero:true,position:'right',title:axisT('Ribu jiwa'),grid:{drawOnChartArea:false}}}}});
+}
+function renderParah(rows){
+  const by=groupBy(rows,r=>r.parah);
+  const g=SEV.filter(s=>by.has(s)).map(s=>[s,by.get(s)]);
+  upsert('chParah',{type:'bar',data:{labels:g.map(x=>x[0]),datasets:[
+    {type:'bar',label:'Jumlah kejadian',data:g.map(x=>x[1].length),backgroundColor:g.map(x=>SEV_COL[x[0]]),yAxisID:'y',order:2},
+    {type:'line',label:'Rata-rata ISPA/kejadian',data:g.map(x=>Math.round(mean(x[1].map(r=>r.ispa)))),borderColor:css('--navy'),backgroundColor:css('--navy'),yAxisID:'y1',pointRadius:5,order:1}
+  ]},options:{scales:{
+    y:{beginAtZero:true,title:axisT('Kejadian')},
+    y1:{beginAtZero:true,position:'right',title:axisT('Jiwa / kejadian'),grid:{drawOnChartArea:false}}}}});
+}
+function renderTop(rows){
+  const g=[...groupBy(rows,r=>r.kota)].map(([k,a])=>({k,rugi:sum(a,r=>r.rugi_juta),ispa:sum(a,r=>r.ispa)}))
+    .sort((a,b)=>b.rugi-a.rugi).slice(0,10);
+  upsert('chTop',{type:'bar',data:{labels:g.map(x=>x.k),datasets:[
+    {label:'Kerugian (Rp miliar)',data:g.map(x=>+(x.rugi/1000).toFixed(1)),backgroundColor:css('--teal'),xAxisID:'x'},
+    {label:'ISPA (ribu jiwa)',data:g.map(x=>+(x.ispa/1000).toFixed(1)),backgroundColor:css('--amber'),xAxisID:'x2'}
+  ]},options:{indexAxis:'y',scales:{
+    x:{beginAtZero:true,position:'bottom',title:axisT('Rp miliar')},
+    x2:{beginAtZero:true,position:'top',title:axisT('Ribu jiwa'),grid:{drawOnChartArea:false}}}}});
+}
+function renderScatter(rows){
+  const r = corr(rows.map(x=>x.titik_api), rows.map(x=>x.luas_ha));
+  $('#scatNote').textContent = isNaN(r) ? 'Data kurang.' :
+    `Korelasi titik api vs luas terbakar (r) = ${nf(r,2)}: semakin banyak titik api (hotspot), semakin luas lahan terbakar. Warna = tingkat keparahan.`;
+  upsert('chScatter',{type:'scatter',data:{datasets:SEV.map(s=>({
+    label:s,data:rows.filter(x=>x.parah===s).map(x=>({x:x.titik_api,y:x.luas_ha,kota:x.kota})),
+    backgroundColor:SEV_COL[s]+'bb',pointRadius:4}))},
+    options:{scales:{x:{title:axisT('Jumlah Titik Api (Hotspot)')},y:{title:axisT('Luas Terbakar (Hektar)'),beginAtZero:true}},
+    plugins:{tooltip:{callbacks:{label:c=>` ${c.raw.kota}: ${c.raw.x} titik → ${c.raw.y} Ha`}}}}});
+}
+function donut(id, rows, key, order, colors){
+  const by=groupBy(rows,key);
+  const labs=order.filter(o=>by.has(o));
+  upsert(id,{type:'doughnut',data:{labels:labs,datasets:[{data:labs.map(l=>by.get(l).length),backgroundColor:labs.map(l=>colors[l]),borderWidth:1}]},
+    options:{cutout:'58%',plugins:{legend:{position:'right'}}}});
+}
+
+/* Insight Dinamis */
+function insights(rows){
+  if(!rows.length) return [{k:'watch',t:'Tidak ada data',x:'Filter terlalu ketat.',q:'Longgarkan filter.'}];
+  const out=[];
+  const totalRugi = sum(rows,r=>r.rugi_juta);
+
+  // 1. Tren Karhutla
+  const yc=yoy(rows,a=>a.length), yr=yoy(rows,a=>sum(a,r=>r.rugi_juta));
+  if(yc && yr){
+    const dc=(yc.cur-yc.prev)/yc.prev*100, dr=(yr.cur-yr.prev)/yr.prev*100;
+    out.push({k:dr>0?'risk':'ok',t:'Evaluasi Tren Tahunan',
+      x:`Kejadian Karhutla ${yc.ly} ${dc>=0?'naik':'turun'} ${pct(Math.abs(dc))} & kerugian ${dr>=0?'naik':'turun'} ${pct(Math.abs(dr))} dibanding ${yc.py}.`,
+      q:'Apakah skema sistem peringatan dini (Early Warning System) sudah beroperasi efektif di daerah rawan?'});
+  }
+
+  // 2. Penyebab Lahan Gambut
+  const gc=[...groupBy(rows,r=>r.penyebab)].map(([k,a])=>({k,n:a.length,rugi:sum(a,r=>r.rugi_juta),avg:mean(a.map(r=>r.luas_ha))}));
+  const topC=gc.slice().sort((a,b)=>b.rugi-a.rugi)[0];
+  out.push({k:'watch',t:'Penyebab Kebakaran Dominan',
+    x:`${topC.k} memicu ${pct(topC.rugi/totalRugi*100)} dari total kerugian ekonomi dengan rata-rata area terbakar ${nf(topC.avg,1)} Ha/kejadian.`,
+    q:'Bagaimana penegakan hukum terhadap konsesi lahan dan pengawasan peratapan lahan gambut?'});
+
+  // 3. Wilayah Karhutla Terparah
+  const gw=[...groupBy(rows,r=>r.wil)].map(([k,a])=>({k,rugi:sum(a,r=>r.rugi_juta),ispa:sum(a,r=>r.ispa)}));
+  const topW=gw.slice().sort((a,b)=>b.rugi-a.rugi)[0];
+  out.push({k:'risk',t:'Wilayah Aksen Risiko',
+    x:`${topW.k} mengalami dampak terparah (${rp(topW.rugi)} kerugian & ${nf(topW.ispa)} paparan ISPA).`,
+    q:'Apakah helikopter water-bombing dan sarana Manggala Agni tercukupi di wilayah ini?'});
+
+  // 4. Kesiapan Bantuan
+  const open=rows.filter(x=>x.status!=='Padam Total').length/rows.length*100;
+  out.push({k:open>20?'risk':'ok',t:'Status Penanganan & Pemadaman',
+    x:`Terdapat ${pct(open)} kejadian masih berstatus Penanganan Aktif / Siaga Darurat.`,
+    q:'Apakah posko kesehatan dan pembagian masker N95 sudah menjangkau masyarakat terintegrasi?'});
+
+  return out;
+}
+function renderInsights(rows){
+  $('#insights').innerHTML = insights(rows).map(i=>
+    `<div class="ins ${i.k}"><b>${i.t}</b><p>${i.x}</p><p class="q">→ ${i.q}</p></div>`).join('');
+}
+
+/* Tabel */
+function renderTable(rows){
+  const top=rows.slice().sort((a,b)=>b.rugi_juta-a.rugi_juta).slice(0,25);
+  const cols=['ID','Tanggal','Kota/Kab.','Provinsi','Penyebab','Keparahan','Titik Api','Luas (Ha)','ISPA','Kerugian','Status'];
+  $('#tbl').innerHTML = '<thead><tr>'+cols.map((c,i)=>`<th class="${[6,7,8,9].includes(i)?'num':''}">${c}</th>`).join('')+'</tr></thead><tbody>'+
+    top.map(r=>`<tr><td>${r.id}</td><td>${r.tgl}</td><td>${r.kota}</td><td>${r.prov}</td><td>${r.penyebab}</td><td>${r.parah}</td>`+
+      `<td class="num">${r.titik_api}</td><td class="num">${nf(r.luas_ha,1)}</td><td class="num">${nf(r.ispa)}</td><td class="num">${rp(r.rugi_juta)}</td><td>${r.status}</td></tr>`).join('')+'</tbody>';
+}
+
+function render(){
+  applyTheme();
+  const rows = filtered();
+  $('#rangeTxt').textContent = `${MON[DMIN%100-1]} ${Math.floor(DMIN/100)} – ${MON[DMAX%100-1]} ${Math.floor(DMAX/100)}`;
+  renderKPI(rows);
+  renderTrend(rows); renderCause(rows); renderWil(rows); renderParah(rows); renderTop(rows); renderScatter(rows);
+  donut('chStatus', rows, r=>r.status, OPT.status, {'Padam Total':'#2e7d32','Penanganan Aktif':'#f57c00','Siaga Darurat':'#c62828'});
+  donut('chBantu', rows, r=>r.bantuan, OPT.bantu, {Ya:'#d84315',Tidak:'#c62828'});
+  renderInsights(rows); renderTable(rows);
+}
+buildFilters();
+render();
+</script>
+</body>
+</html>
